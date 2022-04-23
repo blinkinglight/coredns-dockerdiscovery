@@ -8,7 +8,7 @@ RUN go mod download
 RUN sed -i '70 i docker:github.com/blinkinglight/coredns-dockerdiscovery' plugin.cfg
 ENV CGO_ENABLED=0
 RUN go generate coredns.go
-RUN go get -u github.com/blinkinglight/coredns-dockerdiscovery@v0.0.2
+RUN go get -u github.com/blinkinglight/coredns-dockerdiscovery@v0.0.3
 RUN go build -mod=mod -o=/usr/local/bin/coredns
 
 FROM alpine:3.13.5

@@ -178,11 +178,11 @@ func (dd DockerDiscovery) updateContainerInfo(container *dockerapi.Container) er
 		}
 
 		if !isExist {
-			dd.etcd.Put(context.TODO(), fmt.Sprintf("/docker/%s", normalizeContainerName(container)), `{"host":"`+containerAddress.String()+`","ttl":15}`)
+			dd.etcd.Put(context.TODO(), fmt.Sprintf("/docker/docker/%s", normalizeContainerName(container)), `{"host":"`+containerAddress.String()+`","ttl":15}`)
 			log.Printf("[docker] Add entry of container %s (%s). IP: %v", normalizeContainerName(container), container.ID[:12], containerAddress)
 		}
 	} else if isExist {
-		dd.etcd.Delete(context.TODO(), fmt.Sprintf("/docker/%s", normalizeContainerName(container)))
+		dd.etcd.Delete(context.TODO(), fmt.Sprintf("/docker/docker/%s", normalizeContainerName(container)))
 		log.Printf("[docker] Remove container entry %s (%s)", normalizeContainerName(container), container.ID[:12])
 	}
 	return nil
@@ -195,6 +195,7 @@ func (dd DockerDiscovery) removeContainerInfo(containerID string) error {
 		return nil
 	}
 	log.Printf("[docker] Deleting entry %s (%s)", normalizeContainerName(containerInfo.container), containerInfo.container.ID[:12])
+	dd.etcd.Delete(context.TODO(), fmt.Sprintf("/docker/docker/%s", normalizeContainerName(containerInfo.container)))
 	delete(dd.containerInfoMap, containerID)
 
 	return nil
