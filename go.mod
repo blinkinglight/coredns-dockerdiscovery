@@ -1,4 +1,4 @@
-module github.com/kevinjqiu/coredns-dockerdiscovery
+module github.com/blinkinglight/coredns-dockerdiscovery
 
 go 1.16
 
