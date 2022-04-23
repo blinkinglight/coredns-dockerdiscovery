@@ -2,15 +2,19 @@ package dockerdiscovery
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
+	"log"
+	"net"
+	"strings"
+
 	"github.com/coredns/coredns/plugin"
 	"github.com/coredns/coredns/request"
 	dockerapi "github.com/fsouza/go-dockerclient"
 	"github.com/miekg/dns"
-	"log"
-	"net"
-	"strings"
+
+	etcdcv3 "go.etcd.io/etcd/client/v3"
 )
 
 type ContainerInfo struct {
@@ -34,6 +38,8 @@ type DockerDiscovery struct {
 	dockerClient     *dockerapi.Client
 	containerInfoMap ContainerInfoMap
 	domainIPMap      map[string]*net.IP
+	endpoints        []string
+	etcd             *etcdcv3.Client
 }
 
 // NewDockerDiscovery constructs a new DockerDiscovery object
@@ -172,9 +178,11 @@ func (dd DockerDiscovery) updateContainerInfo(container *dockerapi.Container) er
 		}
 
 		if !isExist {
+			dd.etcd.Put(context.TODO(), fmt.Sprintf("/docker/%s", normalizeContainerName(container)), `{"host":"`+containerAddress.String()+`","ttl":15}`)
 			log.Printf("[docker] Add entry of container %s (%s). IP: %v", normalizeContainerName(container), container.ID[:12], containerAddress)
 		}
 	} else if isExist {
+		dd.etcd.Delete(context.TODO(), fmt.Sprintf("/docker/%s", normalizeContainerName(container)))
 		log.Printf("[docker] Remove container entry %s (%s)", normalizeContainerName(container), container.ID[:12])
 	}
 	return nil
@@ -194,6 +202,11 @@ func (dd DockerDiscovery) removeContainerInfo(containerID string) error {
 
 func (dd DockerDiscovery) start() error {
 	log.Println("[docker] start")
+	var err error
+	dd.etcd, err = newEtcdClient(dd.endpoints, nil, "", "")
+	if err != nil {
+		return err
+	}
 	events := make(chan *dockerapi.APIEvents)
 
 	if err := dd.dockerClient.AddEventListener(events); err != nil {
@@ -263,6 +276,22 @@ func (dd DockerDiscovery) start() error {
 	}
 
 	return errors.New("docker event loop closed")
+}
+
+func newEtcdClient(endpoints []string, cc *tls.Config, username, password string) (*etcdcv3.Client, error) {
+	etcdCfg := etcdcv3.Config{
+		Endpoints: endpoints,
+		TLS:       cc,
+	}
+	if username != "" && password != "" {
+		etcdCfg.Username = username
+		etcdCfg.Password = password
+	}
+	cli, err := etcdcv3.New(etcdCfg)
+	if err != nil {
+		return nil, err
+	}
+	return cli, nil
 }
 
 // a takes a slice of net.IPs and returns a slice of A RRs.

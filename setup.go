@@ -38,6 +38,12 @@ func createPlugin(c *caddy.Controller) (DockerDiscovery, error) {
 		for c.NextBlock() {
 			var value = c.Val()
 			switch value {
+			case "endpoint":
+				args := c.RemainingArgs()
+				if len(args) == 1 {
+					return dd, c.ArgErr()
+				}
+				dd.endpoints = args
 			case "domain":
 				var resolver = &SubDomainContainerNameResolver{
 					domain: defaultDockerDomain,
