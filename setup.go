@@ -40,7 +40,7 @@ func createPlugin(c *caddy.Controller) (DockerDiscovery, error) {
 			switch value {
 			case "endpoint":
 				args := c.RemainingArgs()
-				if len(args) == 1 {
+				if len(args) == 0 {
 					return dd, c.ArgErr()
 				}
 				dd.endpoints = args
